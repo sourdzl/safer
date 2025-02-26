@@ -250,6 +250,25 @@
         word-break: break-all;
         flex: 1;
       }
+
+      .security-tip-box {
+        background-color: #f8f9fa;
+        border-left: 4px solid #0066cc;
+        padding: 1em;
+        margin-bottom: 1.5em;
+        border-radius: 0 4px 4px 0;
+      }
+
+      .security-tip-box h4 {
+        margin-top: 0;
+        color: #0066cc;
+      }
+
+      .security-tip-box a {
+        font-weight: bold;
+        color: #0066cc;
+        text-decoration: underline;
+      }
     </style>
 </head>
 <body>
@@ -376,6 +395,14 @@
 
       <!-- Transaction Sign Tab -->
       <div id="sign-section" style="display:none;">
+        <div class="security-tip-box">
+          <h4>🔐 Security Tip</h4>
+          <p>Before signing any transaction, verify what you're signing by checking the transaction hash at
+            <a href="https://www.safehashpreview.com/" target="_blank" rel="noopener noreferrer">SafeHashPreview.com</a>.
+          </p>
+          <p>This independent tool lets you confirm exactly what actions your transaction will perform.</p>
+        </div>
+
         <button
           hx-get="/signTx"
           hx-target="#signatureArea"
