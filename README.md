@@ -279,6 +279,35 @@ All of the underlying functionality still relies on the Foundry scripts, but the
 
 ## Advanced options
 
+### Hardware Wallet support
+
+With `make sign` & `make exec`, one can also use any other wallet provider available with `cast`:
+
+- `make cmd:interactive` to input the private key to the command prompt
+- `make cmd:ledger` to use a Ledger
+- `make cmd:trezor` to use a Trezor
+- `make cmd:keystore` to use a keystore
+- `make cmd:"private-key 0x..."` if you really want to save your private key to your shell's history...
+
+You can also append any `cast` parameter:
+- `make sign:"ledger --mnemonic 1 --mnemonic-index 1"` or `make exec:"ledger --mnemonics foo --mnemonic-indexes 1"` to use another account than the default one at index `0`
+
+### Transaction details
+
+```json
+{
+  "to": "0x0000000000000000000000000000000000000000",
+  "value": "0", // The tx value (in ETH), must be a string
+  "data": "0x", // The raw tx data, must start with 0x
+  "operation": 0, // 0 for a call, 1 for a delegatecall
+  "safeTxGas": 0,
+  "baseGas": 0,
+  "gasPrice": 0,
+  "gasToken": "0x0000000000000000000000000000000000000000", // Indicates the tx will consume the chain's default gas token (ETH on mainnet)
+  "refundReceiver": "0x0000000000000000000000000000000000000000" // Indicates the tx's refund receiver will be the address executing the tx
+}
+```
+
 ### Customizing Network Support
 
 By default, the frontend supports Ethereum Mainnet, Goerli, and Polygon. To add support for additional networks:
