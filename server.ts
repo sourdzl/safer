@@ -51,6 +51,14 @@ interface SafeDetails {
   owners: string[];
 }
 
+// Add a global variable to store user-provided Safe address
+let userProvidedSafeAddress: string | null = null;
+
+// Helper function to get the effective Safe address
+function getSafeAddress(): string {
+  return process.env.SAFE || userProvidedSafeAddress || "";
+}
+
 // Helper to ensure data directory exists
 const ensureDataDirExists = () => {
   const dataDir = path.join(process.cwd(), "data");
@@ -68,16 +76,58 @@ app.get("/", (req, res) => {
 // Get Safe details including threshold and owners
 app.get("/safeDetails", async (req, res) => {
   try {
-    const safeAddress = process.env.SAFE || "";
+    const safeAddress = getSafeAddress();
     const sender = process.env.SENDER || "";
     const nonce = process.env.SAFE_NONCE || "latest";
 
     if (!safeAddress) {
       return res.send(`
-        <div class="error">
-          <h3>⚠️ Safe Address Not Configured</h3>
-          <p>Please set the SAFE environment variable in your .env file.</p>
+        <h2>⚠️ Safe Address Not Configured</h2>
+        <p>No Safe address has been configured. Please provide a Safe address below:</p>
+
+        <div id="safeAddressFormInline">
+          <form id="configFormInline">
+            <label for="safeAddressInline">Safe Address:</label>
+            <input
+              type="text"
+              id="safeAddressInline"
+              name="safeAddressInline"
+              placeholder="0x..."
+              required
+            />
+
+            <button type="submit">Set Safe Address</button>
+          </form>
         </div>
+
+        <script>
+          document.getElementById('configFormInline').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const safeAddress = document.getElementById('safeAddressInline').value;
+
+            // Save to localStorage
+            localStorage.setItem('safeAddress', safeAddress);
+
+            // Submit to server
+            const response = await fetch('/setSafeAddress', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ safeAddress })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+              // Reload the page to show the configured Safe
+              window.location.reload();
+            } else {
+              alert('Error saving Safe address: ' + result.error);
+            }
+          });
+        </script>
       `);
     }
 
@@ -105,10 +155,16 @@ app.get("/safeDetails", async (req, res) => {
       owners = safeDetails.owners || [];
     }
 
+    // Add the "Change Safe" button to the HTML response
+    let html = `<h2>Safe Details:</h2>
+      <div class="details-row">
+        <span class="label">Address:</span>
+        <span class="value">${safeAddress}</span>
+        <button id="changeSafeBtn" class="small-button">Change Safe</button>
+      </div>`;
+
     // Return HTML with safe details
-    res.send(`
-      <h3>Safe Configuration</h3>
-      <p><strong>Safe Address:</strong> <span class="safe-address">${safeAddress}</span></p>
+    html += `
       <p><strong>Required Signatures:</strong> ${threshold} of ${
       owners.length
     } owners</p>
@@ -121,7 +177,42 @@ app.get("/safeDetails", async (req, res) => {
           ? `<p><strong>Transaction Sender:</strong> <span class="safe-address">${sender}</span></p>`
           : ""
       }
-    `);
+    `;
+
+    // Add script for the Change Safe button
+    html += `
+      <script>
+        document.getElementById('changeSafeBtn').addEventListener('click', async function() {
+          if (confirm('Are you sure you want to change the Safe address? Any unsaved transactions will be lost.')) {
+            try {
+              const response = await fetch('/clearSafeAddress', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                }
+              });
+
+              const result = await response.json();
+
+              if (result.success) {
+                // Clear localStorage
+                localStorage.removeItem('safeAddress');
+
+                // Reload the page
+                window.location.reload();
+              } else {
+                alert('Error clearing Safe address: ' + result.error);
+              }
+            } catch (error) {
+              console.error('Error:', error);
+              alert('An error occurred while trying to change the Safe address.');
+            }
+          }
+        });
+      </script>
+    `;
+
+    res.send(html);
   } catch (error) {
     console.error("Error getting safe details:", error);
     res.status(500).send(`
@@ -690,6 +781,65 @@ app.post("/submitHardwareWalletSignature", async (req, res) => {
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
+// Add new endpoint to check Safe configuration
+app.get("/checkSafeConfig", (req, res) => {
+  const safeConfigured = Boolean(process.env.SAFE || userProvidedSafeAddress);
+  console.log("Safe configured check:", {
+    envSafe: process.env.SAFE,
+    userProvided: userProvidedSafeAddress,
+    result: safeConfigured,
+  });
+  res.json({ safeConfigured });
+});
+
+// Add endpoint to set Safe address
+app.post("/setSafeAddress", (req, res) => {
+  try {
+    const { safeAddress } = req.body;
+
+    // Validate address format (basic check)
+    if (!safeAddress || !safeAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
+      return res.json({
+        success: false,
+        error: "Invalid Safe address format",
+      });
+    }
+
+    // Store the address
+    userProvidedSafeAddress = safeAddress;
+
+    // Update all commands to use this address
+    res.json({ success: true });
+  } catch (error: unknown) {
+    console.error("Error setting Safe address:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    res.json({
+      success: false,
+      error: errorMessage,
+    });
+  }
+});
+
+// Add endpoint to clear Safe address
+app.post("/clearSafeAddress", (req, res) => {
+  try {
+    // Clear the user-provided Safe address
+    userProvidedSafeAddress = null;
+
+    console.log("Safe address cleared");
+    res.json({ success: true });
+  } catch (error: unknown) {
+    console.error("Error clearing Safe address:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    res.json({
+      success: false,
+      error: errorMessage,
     });
   }
 });
