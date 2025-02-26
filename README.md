@@ -117,6 +117,58 @@ If signatures are being rejected:
 2. Verify that the Safe address and network are the same for all signers
 3. Check that signers are using wallets connected to the addresses registered in the Safe
 
+## CLI and Webapp Integration
+
+The CLI tools and web interface in Safer are not separate systems but complementary interfaces to the same underlying functionality. This design provides flexibility and resilience for multisig operations.
+
+### Shared Components
+
+1. **Common Data Files**
+
+   - Both interfaces read from and write to the same files:
+     - `data/tx.json` for transaction data
+     - `data/signatures.txt` for collected signatures
+
+2. **Underlying Foundry Scripts**
+
+   - The webapp executes the same Foundry scripts that the CLI uses
+   - For example, when you click "Build Transaction" in the webapp, it runs the same script as `make tx`
+
+3. **Shared Configuration**
+   - Both use the same `.env` file for environment variables
+
+### Flexible Workflows
+
+This integration allows for mixed workflows where you can:
+
+1. **Combine approaches based on preference**:
+
+   - Build a transaction in the CLI but collect signatures via the webapp
+   - Create a transaction via the webapp but execute it through CLI
+   - Switch between interfaces at any point in the process
+
+2. **Accommodate different user types**:
+
+   - Technical users can stick with CLI
+   - Non-technical users can use the webapp
+   - Mixed teams can each use their preferred interface
+
+3. **Provide redundancy**:
+   - If the webapp server is down, you can fall back to CLI
+   - If access to terminal is limited, you can use the webapp
+
+### Example Mixed Workflow
+
+Here's how a team might use both interfaces in a single transaction:
+
+1. Developer creates transaction via CLI with `make tx`
+2. Shares the data directory with other signers
+3. Non-technical signers use the webapp to connect hardware wallets and sign
+4. Technical signers might use CLI commands like `make sign:ledger`
+5. Final execution could be done through either interface
+
+This integrated design eliminates single points of failure and supports Safer's goal of "true DAO resilience" by providing multiple ways to interact with Safe transactions.
+
 ## Web Frontend
 
 A user-friendly web interface is available for interacting with Safer through any modern browser. This provides a complete solution for building, signing, and executing Safe transactions without using command-line tools.
